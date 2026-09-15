@@ -1,0 +1,49 @@
+name: Deploy preview
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Branch or SHA in Dizzlacus/celeste-yoga
+        default: rebrand
+        required: true
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout celeste-yoga
+        uses: actions/checkout@v7
+        with:
+          repository: Dizzlacus/celeste-yoga
+          ref: ${{ inputs.ref }}
+
+      - name: Drop production CNAME
+        run: rm -f public/CNAME CNAME
+
+      - name: Install, build, and upload
+        uses: withastro/action@v6
+        env:
+          PUBLIC_SITE_URL: https://dizzlacus.github.io
+          PUBLIC_BASE_PATH: /celeste-yoga-preview/
+          PUBLIC_NOINDEX: 'true'
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
